@@ -1,6 +1,7 @@
 const express = require('express');
 const authRoutes = require('./auth');
 const tutorRoutes = require('./tutors');
+const studentRoutes = require('./students');
 const enquiryRoutes = require('./enquiries');
 
 // ============================================
@@ -18,6 +19,7 @@ router.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       tutors: '/api/tutors',
+      students: '/api/students',
       enquiries: '/api/enquiries',
     },
   });
@@ -26,6 +28,7 @@ router.get('/', (req, res) => {
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/tutors', tutorRoutes);
+router.use('/students', studentRoutes);
 router.use('/enquiries', enquiryRoutes);
 
 module.exports = router;

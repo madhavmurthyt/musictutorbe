@@ -73,8 +73,13 @@ const register = async ({ email, password, name }) => {
  * Login with email/password
  */
 const login = async ({ email, password }) => {
-  // Find user
-  const user = await User.findOne({ where: { email } });
+  // Find user with profile for onboarding status
+  const user = await User.findOne({
+    where: { email },
+    include: [
+      { model: TutorProfile, as: 'tutorProfile', required: false },
+    ],
+  });
   if (!user) {
     throw new ApiError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
   }
@@ -97,9 +102,16 @@ const login = async ({ email, password }) => {
   // Generate token
   const token = generateToken(user);
 
+  // For teachers, include onboarding status so app can route correctly
+  let hasCompletedOnboarding = true;
+  if (user.role === 'teacher') {
+    hasCompletedOnboarding = user.tutorProfile?.onboardingComplete ?? false;
+  }
+
   return {
     user: user.toSafeObject(),
     token,
+    hasCompletedOnboarding,
   };
 };
 

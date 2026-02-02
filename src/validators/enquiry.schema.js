@@ -11,7 +11,7 @@ const dayOfWeekEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 const timePreferenceEnum = z.enum(['morning', 'afternoon', 'evening', 'flexible']);
 
 // Proficiency level enum
-const proficiencyLevelEnum = z.enum(['beginner', 'intermediate', 'advanced', 'expert']);
+const proficiencyLevelEnum = z.enum(['beginner', 'intermediate', 'advanced', 'expert', 'master']);
 
 // Enquiry status enum
 const enquiryStatusEnum = z.enum(['pending', 'accepted', 'declined']);

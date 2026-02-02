@@ -3,7 +3,7 @@ const tutorService = require('../services/tutor.service');
 const { auth } = require('../middleware/auth');
 const { requireTeacher } = require('../middleware/requireRole');
 const validate = require('../middleware/validate');
-const { success, created, paginated } = require('../utils/response');
+const { success, created, paginatedWithKey } = require('../utils/response');
 const {
   createTutorSchema,
   updateTutorSchema,
@@ -25,7 +25,7 @@ const router = express.Router();
 router.get('/', validate(listTutorsQuerySchema, 'query'), async (req, res, next) => {
   try {
     const result = await tutorService.listTutors(req.validatedQuery);
-    return paginated(res, result.tutors, result.pagination);
+    return paginatedWithKey(res, 'tutors', result.tutors, result.pagination);
   } catch (error) {
     next(error);
   }

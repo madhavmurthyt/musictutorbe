@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -8,6 +10,7 @@ const morgan = require('morgan');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const db = require('./models');
+const { uploadDir } = require('./config/upload');
 
 // ============================================
 // APP INITIALIZATION
@@ -43,6 +46,12 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Static uploads (profile photos)
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadDir));
 
 // ============================================
 // ROUTES

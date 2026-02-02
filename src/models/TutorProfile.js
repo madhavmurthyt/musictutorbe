@@ -30,6 +30,9 @@ module.exports = (sequelize, DataTypes) => {
         hourlyRate: parseFloat(this.hourlyRate),
         bio: this.bio,
         availability: this.availability || [],
+        timeZoneAvailability: this.timeZoneAvailability || [],
+        preferredContactMode: this.preferredContactMode,
+        preferredContactValue: this.preferredContactValue,
         isOnline: this.isOnline,
         isVerified: this.isVerified,
         yearsOfExperience: this.yearsOfExperience,
@@ -58,10 +61,9 @@ module.exports = (sequelize, DataTypes) => {
       instrument: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: 'Mridangam',
       },
       proficiencyLevel: {
-        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'expert'),
+        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'expert', 'master'),
         allowNull: true,
       },
       hourlyRate: {
@@ -120,6 +122,20 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false,
+      },
+      preferredContactMode: {
+        type: DataTypes.ENUM('email', 'phone'),
+        allowNull: true,
+      },
+      preferredContactValue: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      timeZoneAvailability: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: [],
+        // Time along with time zone: each slot is { timeZone, startTime, endTime } e.g. 8am–9am EST
       },
     },
     {

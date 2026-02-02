@@ -41,13 +41,14 @@ const oauthSchema = z.object({
     required_error: 'Provider is required',
     invalid_type_error: 'Provider must be google, apple, or facebook',
   }),
-  idToken: z
-    .string({ required_error: 'ID token is required' })
-    .min(1, 'ID token is required'),
-  // Optional fields that might come from OAuth provider
+  idToken: z.string().min(1).optional(),
+  accessToken: z.string().min(1).optional(),
   email: z.string().email().optional(),
   name: z.string().optional(),
   photoUrl: z.string().url().optional().nullable(),
+}).refine((data) => data.idToken || data.accessToken, {
+  message: 'Either idToken or accessToken is required',
+  path: ['idToken'],
 });
 
 // Set user role

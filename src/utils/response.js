@@ -51,6 +51,34 @@ const paginated = (res, items, pagination) => {
 };
 
 /**
+ * Send a paginated response with list and pagination under data (for list endpoints).
+ * Response: { success: true, data: { [key]: items, pagination } }
+ *
+ * @param {Response} res - Express response object
+ * @param {string} key - Key for the items array (e.g. 'tutors', 'enquiries')
+ * @param {Array} items - Array of items
+ * @param {object} pagination - Pagination info { page, limit, total }
+ */
+const paginatedWithKey = (res, key, items, pagination) => {
+  const { page, limit, total } = pagination;
+  const totalPages = Math.ceil(total / limit);
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      [key]: items,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages,
+        hasMore: page < totalPages,
+      },
+    },
+  });
+};
+
+/**
  * Send a created response (201)
  */
 const created = (res, data, message = 'Created successfully') => {
@@ -67,6 +95,7 @@ const noContent = (res) => {
 module.exports = {
   success,
   paginated,
+  paginatedWithKey,
   created,
   noContent,
 };

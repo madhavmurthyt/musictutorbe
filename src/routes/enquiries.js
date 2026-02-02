@@ -3,7 +3,7 @@ const enquiryService = require('../services/enquiry.service');
 const { auth } = require('../middleware/auth');
 const { requireStudent, requireTeacher, requireUser } = require('../middleware/requireRole');
 const validate = require('../middleware/validate');
-const { success, created, paginated } = require('../utils/response');
+const { success, created, paginatedWithKey } = require('../utils/response');
 const {
   createEnquirySchema,
   updateEnquiryStatusSchema,
@@ -58,7 +58,7 @@ router.get(
         result = await enquiryService.listTeacherEnquiries(req.userId, req.validatedQuery);
       }
 
-      return paginated(res, { enquiries: result.enquiries }, result.pagination);
+      return paginatedWithKey(res, 'enquiries', result.enquiries, result.pagination);
     } catch (error) {
       next(error);
     }

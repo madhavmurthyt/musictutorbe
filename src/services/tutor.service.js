@@ -101,6 +101,7 @@ const listTutors = async (query) => {
     reviewCount: profile.reviewCount,
     bio: profile.bio,
     availability: profile.availability || [],
+    timeZoneAvailability: profile.timeZoneAvailability || [],
     isOnline: profile.isOnline,
     isVerified: profile.isVerified,
     yearsOfExperience: profile.yearsOfExperience,
@@ -153,6 +154,9 @@ const getTutorById = async (tutorId) => {
     reviewCount: profile.reviewCount,
     bio: profile.bio,
     availability: profile.availability || [],
+    timeZoneAvailability: profile.timeZoneAvailability || [],
+    preferredContactMode: profile.preferredContactMode,
+    preferredContactValue: profile.preferredContactValue,
     isOnline: profile.isOnline,
     isVerified: profile.isVerified,
     yearsOfExperience: profile.yearsOfExperience,
@@ -160,28 +164,41 @@ const getTutorById = async (tutorId) => {
 };
 
 /**
+ * Normalize profile payload: flatten location, strip undefined
+ */
+const normalizeProfileData = (data) => {
+  const normalized = { ...data };
+  if (normalized.location && typeof normalized.location === 'object') {
+    normalized.city = normalized.location.city ?? normalized.city;
+    normalized.state = normalized.location.state ?? normalized.state;
+    normalized.country = normalized.location.country ?? normalized.country;
+    delete normalized.location;
+  }
+  return normalized;
+};
+
+/**
  * Create or update tutor profile (onboarding)
  */
 const createOrUpdateTutorProfile = async (userId, data) => {
+  const payload = normalizeProfileData(data);
+
   // Find existing profile
   let profile = await TutorProfile.findOne({ where: { userId } });
 
   if (!profile) {
-    // Create new profile
     profile = await TutorProfile.create({
       userId,
-      ...data,
+      ...payload,
       onboardingComplete: true,
     });
   } else {
-    // Update existing profile
     await profile.update({
-      ...data,
+      ...payload,
       onboardingComplete: true,
     });
   }
 
-  // Fetch with user data
   const updatedProfile = await TutorProfile.findOne({
     where: { userId },
     include: [
@@ -193,7 +210,6 @@ const createOrUpdateTutorProfile = async (userId, data) => {
     ],
   });
 
-  // Mock email notification
   console.log(`📧 [Mock Email] Tutor profile updated for ${updatedProfile.user.email}`);
 
   return {
@@ -210,6 +226,9 @@ const createOrUpdateTutorProfile = async (userId, data) => {
     hourlyRate: parseFloat(updatedProfile.hourlyRate),
     bio: updatedProfile.bio,
     availability: updatedProfile.availability || [],
+    timeZoneAvailability: updatedProfile.timeZoneAvailability || [],
+    preferredContactMode: updatedProfile.preferredContactMode,
+    preferredContactValue: updatedProfile.preferredContactValue,
     isOnline: updatedProfile.isOnline,
     yearsOfExperience: updatedProfile.yearsOfExperience,
     onboardingComplete: updatedProfile.onboardingComplete,

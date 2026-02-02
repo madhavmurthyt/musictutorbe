@@ -109,7 +109,7 @@ const listStudentEnquiries = async (studentId, query) => {
           {
             model: TutorProfile,
             as: 'tutorProfile',
-            attributes: ['instrument', 'city', 'state'],
+            attributes: ['instrument', 'city', 'state', 'preferredContactMode', 'preferredContactValue'],
           },
         ],
       },
@@ -119,23 +119,38 @@ const listStudentEnquiries = async (studentId, query) => {
     offset,
   });
 
-  const enquiries = rows.map((e) => ({
-    id: e.id,
-    tutorId: e.tutorId,
-    tutorName: e.tutor.name,
-    tutorPhotoUrl: e.tutor.photoUrl,
-    tutorInstrument: e.tutor.tutorProfile?.instrument,
-    tutorLocation: e.tutor.tutorProfile
-      ? { city: e.tutor.tutorProfile.city, state: e.tutor.tutorProfile.state }
-      : null,
-    message: e.message,
-    studentLevel: e.studentLevel,
-    preferredDays: e.preferredDays,
-    preferredTime: e.preferredTime,
-    status: e.status,
-    createdAt: e.createdAt,
-    respondedAt: e.respondedAt,
-  }));
+  const enquiries = rows.map((e) => {
+    const tutorProfile = e.tutor?.tutorProfile;
+    const isAccepted = e.status === 'accepted';
+    const tutorContact =
+      isAccepted &&
+      tutorProfile?.preferredContactMode &&
+      tutorProfile?.preferredContactValue
+        ? {
+            mode: tutorProfile.preferredContactMode,
+            value: tutorProfile.preferredContactValue,
+          }
+        : null;
+
+    return {
+      id: e.id,
+      tutorId: e.tutorId,
+      tutorName: e.tutor.name,
+      tutorPhotoUrl: e.tutor.photoUrl,
+      tutorInstrument: tutorProfile?.instrument,
+      tutorLocation: tutorProfile
+        ? { city: tutorProfile.city, state: tutorProfile.state }
+        : null,
+      tutorContact,
+      message: e.message,
+      studentLevel: e.studentLevel,
+      preferredDays: e.preferredDays,
+      preferredTime: e.preferredTime,
+      status: e.status,
+      createdAt: e.createdAt,
+      respondedAt: e.respondedAt,
+    };
+  });
 
   return {
     enquiries,
@@ -209,6 +224,7 @@ const listTeacherEnquiries = async (tutorId, query) => {
 
 /**
  * Get enquiry by ID
+ * For students viewing an accepted enquiry, includes tutorContact (mode + value).
  */
 const getEnquiryById = async (enquiryId, userId) => {
   const enquiry = await Enquiry.findByPk(enquiryId, {
@@ -217,6 +233,13 @@ const getEnquiryById = async (enquiryId, userId) => {
         model: User,
         as: 'tutor',
         attributes: ['id', 'name', 'photoUrl', 'email'],
+        include: [
+          {
+            model: TutorProfile,
+            as: 'tutorProfile',
+            attributes: ['preferredContactMode', 'preferredContactValue'],
+          },
+        ],
       },
       {
         model: User,
@@ -230,12 +253,23 @@ const getEnquiryById = async (enquiryId, userId) => {
     throw new ApiError(404, 'Enquiry not found', 'ENQUIRY_NOT_FOUND');
   }
 
-  // Check if user is either the student or tutor
   if (enquiry.studentId !== userId && enquiry.tutorId !== userId) {
     throw new ApiError(403, 'Access denied', 'FORBIDDEN');
   }
 
-  return enquiry;
+  const plain = enquiry.toJSON ? enquiry.toJSON() : enquiry.get({ plain: true });
+
+  if (enquiry.studentId === userId && enquiry.status === 'accepted') {
+    const tp = enquiry.tutor?.tutorProfile;
+    if (tp?.preferredContactMode && tp?.preferredContactValue) {
+      plain.tutorContact = {
+        mode: tp.preferredContactMode,
+        value: tp.preferredContactValue,
+      };
+    }
+  }
+
+  return plain;
 };
 
 /**

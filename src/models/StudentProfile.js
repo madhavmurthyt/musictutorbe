@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
       level: {
-        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'expert'),
+        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'expert', 'master'),
         allowNull: true,
         defaultValue: 'beginner',
       },

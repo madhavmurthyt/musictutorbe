@@ -7,8 +7,8 @@ const { z } = require('zod');
 // Update student profile
 const updateStudentProfileSchema = z.object({
   level: z
-    .enum(['beginner', 'intermediate', 'advanced', 'expert'], {
-      invalid_type_error: 'Level must be beginner, intermediate, advanced, or expert',
+    .enum(['beginner', 'intermediate', 'advanced', 'expert', 'master'], {
+      invalid_type_error: 'Level must be beginner, intermediate, advanced, expert, or master',
     })
     .optional(),
   preferredInstruments: z

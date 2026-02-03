@@ -4,6 +4,7 @@ const { OAuth2Client } = require('google-auth-library');
 const jwksClient = require('jwks-rsa');
 const { User, StudentProfile, TutorProfile } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { formatTutorProfileForApi } = require('./tutor.service');
 
 // ============================================
 // AUTH SERVICE
@@ -338,15 +339,20 @@ const getCurrentUser = async (userId) => {
     throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
   }
 
-  // Determine which profile to return
+  // Determine which profile to return (normalized shape for store hydration and edit forms)
   let profile = null;
   let hasCompletedOnboarding = true;
 
-  if (user.role === 'student') {
-    profile = user.studentProfile;
-  } else if (user.role === 'teacher') {
-    profile = user.tutorProfile;
-    hasCompletedOnboarding = user.tutorProfile?.onboardingComplete ?? false;
+  if (user.role === 'student' && user.studentProfile) {
+    const p = user.studentProfile;
+    profile = {
+      level: p.level,
+      preferredInstruments: Array.isArray(p.preferredInstruments) ? p.preferredInstruments : [],
+      bio: p.bio ?? undefined,
+    };
+  } else if (user.role === 'teacher' && user.tutorProfile) {
+    profile = formatTutorProfileForApi(user.tutorProfile);
+    hasCompletedOnboarding = user.tutorProfile.onboardingComplete ?? false;
   }
 
   return {

@@ -68,6 +68,15 @@ const proficiencyLevelEnum = z.enum(['beginner', 'intermediate', 'advanced', 'ex
   invalid_type_error: 'Proficiency level must be beginner, intermediate, advanced, expert, or master',
 });
 
+// Location object (frontend sends location: { city, state, country }; service flattens to DB columns)
+const locationSchema = z
+  .object({
+    city: z.string().max(100).trim().optional(),
+    state: z.string().max(100).trim().optional(),
+    country: z.string().max(100).trim().optional(),
+  })
+  .optional();
+
 // Base tutor profile object (no refine) — .partial() only works on ZodObject
 const tutorProfileObjectSchema = z.object({
   instrument: z
@@ -80,6 +89,7 @@ const tutorProfileObjectSchema = z.object({
     .positive('Hourly rate must be positive')
     .max(1000, 'Hourly rate must be less than 1000')
     .optional(),
+  location: locationSchema,
   city: z
     .string()
     .max(100, 'City must be less than 100 characters')

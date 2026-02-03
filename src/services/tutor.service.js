@@ -83,28 +83,13 @@ const listTutors = async (query) => {
     offset,
   });
 
-  // Transform data for API response
+  // Transform data for API response (same shape as formatTutorProfileForApi + user fields)
   const tutors = rows.map((profile) => ({
-    id: profile.userId, // Use userId as tutor ID
+    id: profile.userId,
     name: profile.user.name,
     photoUrl: profile.user.photoUrl,
     email: profile.user.email,
-    instrument: profile.instrument,
-    proficiencyLevel: profile.proficiencyLevel,
-    location: {
-      city: profile.city,
-      state: profile.state,
-      country: profile.country,
-    },
-    hourlyRate: parseFloat(profile.hourlyRate),
-    rating: parseFloat(profile.rating) || 0,
-    reviewCount: profile.reviewCount,
-    bio: profile.bio,
-    availability: profile.availability || [],
-    timeZoneAvailability: profile.timeZoneAvailability || [],
-    isOnline: profile.isOnline,
-    isVerified: profile.isVerified,
-    yearsOfExperience: profile.yearsOfExperience,
+    ...formatTutorProfileForApi(profile),
   }));
 
   return {
@@ -142,6 +127,17 @@ const getTutorById = async (tutorId) => {
     name: profile.user.name,
     photoUrl: profile.user.photoUrl,
     email: profile.user.email,
+    ...formatTutorProfileForApi(profile),
+  };
+};
+
+/**
+ * Format a TutorProfile instance for API (nested location, same shape as list/detail).
+ * Used by getTutorById and by auth getCurrentUser so teacher profile matches browse.
+ */
+function formatTutorProfileForApi(profile) {
+  if (!profile) return null;
+  return {
     instrument: profile.instrument,
     proficiencyLevel: profile.proficiencyLevel,
     location: {
@@ -151,7 +147,7 @@ const getTutorById = async (tutorId) => {
     },
     hourlyRate: parseFloat(profile.hourlyRate),
     rating: parseFloat(profile.rating) || 0,
-    reviewCount: profile.reviewCount,
+    reviewCount: profile.reviewCount ?? 0,
     bio: profile.bio,
     availability: profile.availability || [],
     timeZoneAvailability: profile.timeZoneAvailability || [],
@@ -159,9 +155,9 @@ const getTutorById = async (tutorId) => {
     preferredContactValue: profile.preferredContactValue,
     isOnline: profile.isOnline,
     isVerified: profile.isVerified,
-    yearsOfExperience: profile.yearsOfExperience,
+    yearsOfExperience: profile.yearsOfExperience ?? 0,
   };
-};
+}
 
 /**
  * Normalize profile payload: flatten location, strip undefined
@@ -271,4 +267,5 @@ module.exports = {
   createOrUpdateTutorProfile,
   updateAvailability,
   updateOnlineStatus,
+  formatTutorProfileForApi,
 };

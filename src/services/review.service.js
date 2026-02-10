@@ -25,44 +25,84 @@
 
 */
 
-const { TutorReview } = require('../models');
+const { TutorReview, TutorProfile, User } = require('../models');
+const ApiError = require('../utils/ApiError');
 
-const createReview = async (tutorId, studentId, rating, reviewText) => {
-    const review = await TutorReview.create({ tutorId, studentId, rating, reviewText });
-    return review;
+/**
+ * Submit review: create or update the one review per (tutorId, studentId), then recalc tutor stats.
+ */
+const submitReview = async (tutorId, studentId, rating, reviewText) => {
+  const [review] = await TutorReview.findOrCreate({
+    where: { tutorId, studentId },
+    defaults: { tutorId, studentId, rating, reviewText },
+  });
+  if (!review) {
+    throw new ApiError(500, 'Failed to create or find review', 'REVIEW_ERROR');
+  }
+  review.rating = rating;
+  review.reviewText = reviewText || '';
+  await review.save();
+  await recalculateTutorStats(tutorId);
+  return review;
 };
 
-const updateReview = async (reviewId, rating, reviewText) => {
-    const review = await TutorReview.findByPk(reviewId);    
-    if (!review) {
-        throw new Error('Review not found');
-    }
-    review.rating = rating;
-    review.reviewText = reviewText;
-    await review.save();
-    return review;
-};
-
-const listReviews = async (tutorId, pagination) => {
-    const reviews = await TutorReview.findAll({
-        where: { tutorId },
-        order: [['createdAt', 'DESC']], 
-        limit: pagination?.limit || 10,
-        offset: pagination?.offset || 0,
-    });
-    return reviews;
-};
-
+/**
+ * Recalculate tutor's aggregate rating and review count; update tutor_profiles.
+ * TutorProfile is keyed by userId (tutor's user id).
+ */
 const recalculateTutorStats = async (tutorId) => {
-    const reviews = await TutorReview.findAll({ where: { tutorId } });
-    const reviewCount = reviews.length;
-    const rating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
-    await TutorProfile.update({ rating, reviewCount }, { where: { id: tutorId } });
-};  
+  const reviews = await TutorReview.findAll({ where: { tutorId } });
+  const reviewCount = reviews.length;
+  const rating =
+    reviewCount === 0
+      ? 0
+      : Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10;
+  await TutorProfile.update(
+    { rating, reviewCount },
+    { where: { userId: tutorId } }
+  );
+};
+
+/**
+ * List reviews for a tutor with student names.
+ */
+const listReviewsForTutor = async (tutorId, options = {}) => {
+  const limit = Math.min(options.limit || 20, 50);
+  const offset = options.page ? (options.page - 1) * limit : 0;
+  const { count, rows } = await TutorReview.findAndCountAll({
+    where: { tutorId },
+    include: [
+      {
+        model: User,
+        as: 'student',
+        attributes: ['id', 'name'],
+      },
+    ],
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset,
+  });
+  return {
+    reviews: rows.map((r) => ({
+      id: r.id,
+      tutorId: r.tutorId,
+      studentId: r.studentId,
+      studentName: r.student?.name ?? 'Student',
+      rating: r.rating,
+      reviewText: r.reviewText,
+      createdAt: r.createdAt,
+    })),
+    pagination: {
+      page: options.page || 1,
+      limit,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+    },
+  };
+};
 
 module.exports = {
-    createReview,
-    updateReview,
-    listReviews,
-    recalculateTutorStats,
+  submitReview,
+  recalculateTutorStats,
+  listReviewsForTutor,
 };

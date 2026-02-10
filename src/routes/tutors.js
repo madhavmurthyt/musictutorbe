@@ -1,7 +1,8 @@
 const express = require('express');
 const tutorService = require('../services/tutor.service');
+const reviewService = require('../services/review.service');
 const { auth } = require('../middleware/auth');
-const { requireTeacher } = require('../middleware/requireRole');
+const { requireTeacher, requireStudent } = require('../middleware/requireRole');
 const validate = require('../middleware/validate');
 const { success, created, paginatedWithKey } = require('../utils/response');
 const {
@@ -10,6 +11,10 @@ const {
   updateAvailabilitySchema,
   listTutorsQuerySchema,
 } = require('../validators/tutor.schema');
+const {
+  submitReviewBodySchema,
+  listReviewsQuerySchema,
+} = require('../validators/review.schema');
 
 // ============================================
 // TUTOR ROUTES
@@ -30,6 +35,51 @@ router.get('/', validate(listTutorsQuerySchema, 'query'), async (req, res, next)
     next(error);
   }
 });
+
+/**
+ * GET /api/tutors/:id/reviews
+ * List reviews for a tutor (public)
+ */
+router.get(
+  '/:id/reviews',
+  validate(listReviewsQuerySchema, 'query'),
+  async (req, res, next) => {
+    try {
+      const { id: tutorId } = req.params;
+      const result = await reviewService.listReviewsForTutor(tutorId, req.validatedQuery);
+      return success(res, 200, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/tutors/:id/reviews
+ * Submit or update a review (student only; studentId from auth)
+ */
+router.post(
+  '/:id/reviews',
+  auth,
+  requireStudent,
+  validate(submitReviewBodySchema),
+  async (req, res, next) => {
+    try {
+      const tutorId = req.params.id;
+      const studentId = req.userId;
+      const { rating, reviewText } = req.validatedBody;
+      const review = await reviewService.submitReview(
+        tutorId,
+        studentId,
+        rating,
+        reviewText ?? ''
+      );
+      return created(res, { review }, 'Review submitted');
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * GET /api/tutors/:id

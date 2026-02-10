@@ -50,7 +50,6 @@ TutorReview.init({
     rating: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 0,
         validate: {
             min: 1,
             max: 5,

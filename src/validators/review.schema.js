@@ -26,26 +26,22 @@
 
 const { z } = require('zod');
 
-const createReviewSchema = z.object({
-    tutorId: z.string().uuid('Invalid tutor ID format'),
-    studentId: z.string().uuid('Invalid student ID format'),
-    rating: z.number().int().min(1).max(5, 'Rating must be between 1 and 5'),
-    reviewText: z.string().max(350, 'Review text must be less than 350 characters'),
-});
-
-const updateReviewSchema = z.object({
-    rating: z.number().int().min(1).max(5, 'Rating must be between 1 and 5'),
-    reviewText: z.string().max(350, 'Review text must be less than 350 characters'),
+/** Body for POST /api/tutors/:id/reviews (tutorId from params, studentId from auth) */
+const submitReviewBodySchema = z.object({
+  rating: z.number().int().min(1).max(5, 'Rating must be between 1 and 5'),
+  reviewText: z
+    .string()
+    .max(350, 'Review must be 50 words or less (~350 characters)')
+    .optional()
+    .default(''),
 });
 
 const listReviewsQuerySchema = z.object({
-    tutorId: z.string().uuid('Invalid tutor ID format'),
-    page: z.number().int().positive().default(1),
-    limit: z.number().int().positive().max(50).default(20),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(20),
 });
 
 module.exports = {
-    createReviewSchema,
-    updateReviewSchema,
-    listReviewsQuerySchema,
+  submitReviewBodySchema,
+  listReviewsQuerySchema,
 };

@@ -33,7 +33,6 @@ module.exports = (sequelize, DataTypes) => {
         timeZoneAvailability: this.timeZoneAvailability || [],
         preferredContactMode: this.preferredContactMode,
         preferredContactValue: this.preferredContactValue,
-        isOnline: this.isOnline,
         isVerified: this.isVerified,
         yearsOfExperience: this.yearsOfExperience,
         rating: parseFloat(this.rating) || 0,
@@ -93,11 +92,6 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: [],
         // Format: [{ day: 'mon', startTime: '09:00', endTime: '17:00' }]
       },
-      isOnline: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
       isVerified: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -150,7 +144,6 @@ module.exports = (sequelize, DataTypes) => {
         { fields: ['city', 'state'] },
         { fields: ['proficiency_level'] },
         { fields: ['hourly_rate'] },
-        { fields: ['is_online'] },
         { fields: ['is_verified'] },
         { fields: ['onboarding_complete'] },
       ],

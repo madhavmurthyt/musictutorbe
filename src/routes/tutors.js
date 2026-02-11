@@ -164,25 +164,4 @@ router.patch(
   }
 );
 
-/**
- * PATCH /api/tutors/online-status
- * Update online status
- * Protected: Teacher only
- */
-router.patch('/online-status', auth, requireTeacher, async (req, res, next) => {
-  try {
-    const { isOnline } = req.body;
-    if (typeof isOnline !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'VALIDATION_ERROR', message: 'isOnline must be a boolean' },
-      });
-    }
-    const result = await tutorService.updateOnlineStatus(req.userId, isOnline);
-    return success(res, 200, result, `You are now ${isOnline ? 'online' : 'offline'}`);
-  } catch (error) {
-    next(error);
-  }
-});
-
 module.exports = router;

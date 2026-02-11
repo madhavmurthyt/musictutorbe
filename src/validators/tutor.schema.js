@@ -115,7 +115,6 @@ const tutorProfileObjectSchema = z.object({
   timeZoneAvailability: z.array(timeZoneSlotSchema).optional().default([]),
   preferredContactMode: preferredContactModeEnum.optional().nullable(),
   preferredContactValue: z.string().max(255).trim().optional().nullable(),
-  isOnline: z.boolean().optional().default(false),
   yearsOfExperience: z
     .number()
     .int('Years of experience must be a whole number')
@@ -160,7 +159,6 @@ const listTutorsQuerySchema = z.object({
   minRate: z.coerce.number().positive().optional(),
   maxRate: z.coerce.number().positive().optional(),
   proficiencyLevel: proficiencyLevelEnum.optional(),
-  isOnline: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(50).default(20),

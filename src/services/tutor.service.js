@@ -17,7 +17,6 @@ const listTutors = async (query) => {
     minRate,
     maxRate,
     proficiencyLevel,
-    isOnline,
     isVerified,
     page = 1,
     limit = 20,
@@ -41,9 +40,6 @@ const listTutors = async (query) => {
   }
   if (proficiencyLevel) {
     profileWhere.proficiencyLevel = proficiencyLevel;
-  }
-  if (typeof isOnline === 'boolean') {
-    profileWhere.isOnline = isOnline;
   }
   if (typeof isVerified === 'boolean') {
     profileWhere.isVerified = isVerified;
@@ -153,7 +149,6 @@ function formatTutorProfileForApi(profile) {
     timeZoneAvailability: profile.timeZoneAvailability || [],
     preferredContactMode: profile.preferredContactMode,
     preferredContactValue: profile.preferredContactValue,
-    isOnline: profile.isOnline,
     isVerified: profile.isVerified,
     yearsOfExperience: profile.yearsOfExperience ?? 0,
   };
@@ -225,7 +220,6 @@ const createOrUpdateTutorProfile = async (userId, data) => {
     timeZoneAvailability: updatedProfile.timeZoneAvailability || [],
     preferredContactMode: updatedProfile.preferredContactMode,
     preferredContactValue: updatedProfile.preferredContactValue,
-    isOnline: updatedProfile.isOnline,
     yearsOfExperience: updatedProfile.yearsOfExperience,
     onboardingComplete: updatedProfile.onboardingComplete,
   };
@@ -246,26 +240,10 @@ const updateAvailability = async (userId, availability) => {
   return { availability: profile.availability };
 };
 
-/**
- * Update tutor online status
- */
-const updateOnlineStatus = async (userId, isOnline) => {
-  const profile = await TutorProfile.findOne({ where: { userId } });
-
-  if (!profile) {
-    throw new ApiError(404, 'Tutor profile not found', 'PROFILE_NOT_FOUND');
-  }
-
-  await profile.update({ isOnline });
-
-  return { isOnline: profile.isOnline };
-};
-
 module.exports = {
   listTutors,
   getTutorById,
   createOrUpdateTutorProfile,
   updateAvailability,
-  updateOnlineStatus,
   formatTutorProfileForApi,
 };

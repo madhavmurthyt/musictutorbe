@@ -17,7 +17,7 @@ const { uploadDir } = require('./config/upload');
 // ============================================
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // ============================================
 // MIDDLEWARE

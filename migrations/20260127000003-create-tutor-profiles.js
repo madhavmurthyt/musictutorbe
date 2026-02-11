@@ -60,11 +60,6 @@ module.exports = {
         allowNull: true,
         defaultValue: [],
       },
-      is_online: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
       is_verified: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
@@ -108,7 +103,6 @@ module.exports = {
     await queryInterface.addIndex('tutor_profiles', ['city', 'state']);
     await queryInterface.addIndex('tutor_profiles', ['proficiency_level']);
     await queryInterface.addIndex('tutor_profiles', ['hourly_rate']);
-    await queryInterface.addIndex('tutor_profiles', ['is_online']);
     await queryInterface.addIndex('tutor_profiles', ['is_verified']);
     await queryInterface.addIndex('tutor_profiles', ['onboarding_complete']);
   },

@@ -90,14 +90,13 @@ CORS_ORIGINS=http://localhost:19006,http://localhost:8081
 | POST | `/` | Create/update tutor profile | Teacher |
 | PATCH | `/` | Partial update profile | Teacher |
 | PATCH | `/availability` | Update availability | Teacher |
-| PATCH | `/online-status` | Toggle online status | Teacher |
 
 **Query Parameters for GET /tutors:**
 - `instrument` - Filter by instrument name
 - `city`, `state` - Filter by location
 - `minRate`, `maxRate` - Filter by hourly rate
 - `proficiencyLevel` - beginner/intermediate/advanced/expert
-- `isOnline`, `isVerified` - Boolean filters
+- `isVerified` - Boolean filter
 - `page`, `limit` - Pagination (default: 1, 20)
 - `sortBy` - rating/hourlyRate/yearsOfExperience/createdAt
 - `sortOrder` - asc/desc
@@ -141,7 +140,7 @@ tutor_profiles
 ├── city, state, country
 ├── bio
 ├── availability (JSONB)
-├── is_online, is_verified
+├── is_verified
 ├── years_of_experience
 ├── rating, review_count
 └── onboarding_complete

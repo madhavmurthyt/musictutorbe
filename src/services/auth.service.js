@@ -14,7 +14,13 @@ const SALT_ROUNDS = 12;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // OAuth client IDs (for server-side verification)
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_WEB_CLIENT_ID;
+// Google: support Web (expo-auth-session), iOS and Android (native @react-native-google-signin)
+const GOOGLE_CLIENT_IDS = [
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_WEB_CLIENT_ID,
+  process.env.GOOGLE_IOS_CLIENT_ID,
+  process.env.GOOGLE_ANDROID_CLIENT_ID,
+].filter(Boolean);
 const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.APPLE_BUNDLE_ID;
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 
@@ -48,16 +54,17 @@ const generateToken = (user) => {
 };
 
 /**
- * Verify Google id_token and return payload (sub, email, name, picture)
+ * Verify Google id_token and return payload (sub, email, name, picture).
+ * Accepts tokens from Web, iOS, or Android client (audience must match one of GOOGLE_CLIENT_IDS).
  */
 const verifyGoogleIdToken = async (idToken) => {
-  if (!GOOGLE_CLIENT_ID) {
+  if (!GOOGLE_CLIENT_IDS.length) {
     throw new ApiError(503, 'Google OAuth not configured', 'OAUTH_NOT_CONFIGURED');
   }
-  const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+  const client = new OAuth2Client();
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: GOOGLE_CLIENT_ID,
+    audience: GOOGLE_CLIENT_IDS,
   });
   const payload = ticket.getPayload();
   if (!payload || !payload.sub) {
@@ -170,21 +177,39 @@ const register = async ({ email, password, name }) => {
 };
 
 /**
+ * Get user details and auth routing info (role, hasCompletedOnboarding).
+ * Single place: load user from DB; if role is teacher, resolve onboarding from tutor profile.
+ * Used by login, oauthLogin, and getCurrentUser so routing logic is not duplicated.
+ */
+const getUserAuthPayload = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ['id', 'email', 'name', 'photoUrl', 'role', 'authProvider', 'createdAt'],
+  });
+  if (!user) {
+    throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
+  }
+
+  let hasCompletedOnboarding = true;
+  if (user.role === 'teacher') {
+    const tutorProfile = await TutorProfile.findOne({ where: { userId: user.id } });
+    hasCompletedOnboarding = tutorProfile?.onboardingComplete ?? false;
+  }
+
+  return { user, hasCompletedOnboarding };
+};
+
+/**
  * Login with email/password
  */
 const login = async ({ email, password }) => {
-  // Find user with profile for onboarding status
   const user = await User.findOne({
     where: { email },
-    include: [
-      { model: TutorProfile, as: 'tutorProfile', required: false },
-    ],
+    attributes: ['id', 'passwordHash'],
   });
   if (!user) {
     throw new ApiError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
   }
 
-  // Check if user has a password (might be OAuth only)
   if (!user.passwordHash) {
     throw new ApiError(
       401,
@@ -193,73 +218,41 @@ const login = async ({ email, password }) => {
     );
   }
 
-  // Verify password
   const isValidPassword = await comparePassword(password, user.passwordHash);
   if (!isValidPassword) {
     throw new ApiError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
   }
 
-  // Generate token
-  const token = generateToken(user);
-
-  // For teachers, include onboarding status so app can route correctly
-  let hasCompletedOnboarding = true;
-  if (user.role === 'teacher') {
-    hasCompletedOnboarding = user.tutorProfile?.onboardingComplete ?? false;
-  }
+  const { user: userWithRole, hasCompletedOnboarding } = await getUserAuthPayload(user.id);
+  const token = generateToken(userWithRole);
 
   return {
-    user: user.toSafeObject(),
+    user: userWithRole.toSafeObject(),
     token,
     hasCompletedOnboarding,
   };
 };
 
 /**
- * Dev-only: trust client when OAuth is not configured (for mock SSO)
- */
-const devTrustOAuthPayload = (provider, idToken, accessToken, email, name, photoUrl) => {
-  if (process.env.NODE_ENV !== 'development') return null;
-  const token = accessToken || idToken;
-  if (!token) return null;
-  const authProviderId = `${provider}-${Buffer.from(token).toString('base64').slice(0, 32)}`;
-  return {
-    sub: authProviderId,
-    email: email || null,
-    name: name || null,
-    picture: photoUrl || null,
-  };
-};
-
-/**
  * OAuth login (Google/Apple/Facebook)
- * Verifies id_token/access_token with provider, then create/link user and issue JWT
+ * Verifies id_token/access_token with provider, then create/link user and issue JWT.
+ * Same behavior in all environments; requires provider credentials to be configured.
  */
 const oauthLogin = async ({ provider, idToken, accessToken, email, name, photoUrl }) => {
   let payload;
 
-  try {
-    if (provider === 'google') {
-      if (!idToken) throw new ApiError(400, 'ID token required for Google', 'VALIDATION_ERROR');
-      payload = await verifyGoogleIdToken(idToken);
-    } else if (provider === 'apple') {
-      if (!idToken) throw new ApiError(400, 'ID token required for Apple', 'VALIDATION_ERROR');
-      payload = await verifyAppleIdToken(idToken);
-    } else if (provider === 'facebook') {
-      const token = accessToken || idToken;
-      if (!token) throw new ApiError(400, 'Access token or ID token required for Facebook', 'VALIDATION_ERROR');
-      payload = await verifyFacebookAccessToken(token);
-    } else {
-      throw new ApiError(400, 'Invalid provider', 'VALIDATION_ERROR');
-    }
-  } catch (err) {
-    if (err.code === 'OAUTH_NOT_CONFIGURED') {
-      const devPayload = devTrustOAuthPayload(provider, idToken, accessToken, email, name, photoUrl);
-      if (devPayload) payload = devPayload;
-      else throw err;
-    } else {
-      throw err;
-    }
+  if (provider === 'google') {
+    if (!idToken) throw new ApiError(400, 'ID token required for Google', 'VALIDATION_ERROR');
+    payload = await verifyGoogleIdToken(idToken);
+  } else if (provider === 'apple') {
+    if (!idToken) throw new ApiError(400, 'ID token required for Apple', 'VALIDATION_ERROR');
+    payload = await verifyAppleIdToken(idToken);
+  } else if (provider === 'facebook') {
+    const token = accessToken || idToken;
+    if (!token) throw new ApiError(400, 'Access token or ID token required for Facebook', 'VALIDATION_ERROR');
+    payload = await verifyFacebookAccessToken(token);
+  } else {
+    throw new ApiError(400, 'Invalid provider', 'VALIDATION_ERROR');
   }
 
   const authProviderId = payload.sub;
@@ -298,19 +291,11 @@ const oauthLogin = async ({ provider, idToken, accessToken, email, name, photoUr
     isNewUser = true;
   }
 
-  const token = generateToken(user);
-
-  // Include onboarding status for routing (same as email login)
-  let hasCompletedOnboarding = true;
-  const userWithProfile = await User.findByPk(user.id, {
-    include: [{ model: TutorProfile, as: 'tutorProfile', required: false }],
-  });
-  if (userWithProfile?.role === 'teacher') {
-    hasCompletedOnboarding = userWithProfile.tutorProfile?.onboardingComplete ?? false;
-  }
+  const { user: userFromDb, hasCompletedOnboarding } = await getUserAuthPayload(user.id);
+  const token = generateToken(userFromDb);
 
   return {
-    user: user.toSafeObject(),
+    user: userFromDb.toSafeObject(),
     token,
     isNewUser,
     hasCompletedOnboarding,
@@ -318,41 +303,27 @@ const oauthLogin = async ({ provider, idToken, accessToken, email, name, photoUr
 };
 
 /**
- * Get current user with profile
+ * Get current user with profile and routing info.
+ * Uses getUserAuthPayload for user + role + hasCompletedOnboarding; then loads profile by role.
  */
 const getCurrentUser = async (userId) => {
-  const user = await User.findByPk(userId, {
-    attributes: { exclude: ['passwordHash'] },
-    include: [
-      {
-        model: StudentProfile,
-        as: 'studentProfile',
-      },
-      {
-        model: TutorProfile,
-        as: 'tutorProfile',
-      },
-    ],
-  });
+  const { user, hasCompletedOnboarding } = await getUserAuthPayload(userId);
 
-  if (!user) {
-    throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
-  }
-
-  // Determine which profile to return (normalized shape for store hydration and edit forms)
   let profile = null;
-  let hasCompletedOnboarding = true;
-
-  if (user.role === 'student' && user.studentProfile) {
-    const p = user.studentProfile;
-    profile = {
-      level: p.level,
-      preferredInstruments: Array.isArray(p.preferredInstruments) ? p.preferredInstruments : [],
-      bio: p.bio ?? undefined,
-    };
-  } else if (user.role === 'teacher' && user.tutorProfile) {
-    profile = formatTutorProfileForApi(user.tutorProfile);
-    hasCompletedOnboarding = user.tutorProfile.onboardingComplete ?? false;
+  if (user.role === 'student') {
+    const studentProfile = await StudentProfile.findOne({ where: { userId: user.id } });
+    if (studentProfile) {
+      profile = {
+        level: studentProfile.level,
+        preferredInstruments: Array.isArray(studentProfile.preferredInstruments) ? studentProfile.preferredInstruments : [],
+        bio: studentProfile.bio ?? undefined,
+      };
+    }
+  } else if (user.role === 'teacher') {
+    const tutorProfile = await TutorProfile.findOne({ where: { userId: user.id } });
+    if (tutorProfile) {
+      profile = formatTutorProfileForApi(tutorProfile);
+    }
   }
 
   return {
@@ -372,7 +343,7 @@ const setRole = async (userId, role) => {
     throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
   }
 
-  // Update role
+  // Update role and persist
   user.role = role;
   await user.save();
 
@@ -389,11 +360,11 @@ const setRole = async (userId, role) => {
     }
   }
 
-  // Generate new token with updated role
-  const token = generateToken(user);
+  const { user: updatedUser } = await getUserAuthPayload(userId);
+  const token = generateToken(updatedUser);
 
   return {
-    user: user.toSafeObject(),
+    user: updatedUser.toSafeObject(),
     token,
   };
 };

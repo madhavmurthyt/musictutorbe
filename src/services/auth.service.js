@@ -120,32 +120,73 @@ const verifyAppleIdToken = async (idToken) => {
   });
 };
 
-/**
- * Verify Facebook access_token by calling Graph API
- */
+/* Verify Facebook access_token by calling Graph API
+* Uses debug_token endpoint to validate, then fetches user info.
+* Updated for 2026: better error handling, latest Graph version.
+*/
 const verifyFacebookAccessToken = async (accessToken) => {
-  if (!FACEBOOK_APP_ID) {
-    throw new ApiError(503, 'Facebook OAuth not configured', 'OAUTH_NOT_CONFIGURED');
-  }
-  const url = `https://graph.facebook.com/v21.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new ApiError(401, 'Invalid Facebook token', 'INVALID_OAUTH_TOKEN');
-  }
-  const data = await res.json();
-  if (!data.id) {
-    throw new ApiError(401, 'Invalid Facebook token', 'INVALID_OAUTH_TOKEN');
-  }
-  const picture = data.picture?.data?.url || null;
-  return {
-    sub: data.id,
-    email: data.email || null,
-    name: data.name || null,
-    picture,
-  };
-};
+ if (!FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET) {
+   throw new ApiError(503, 'Facebook OAuth not configured - missing App ID or Secret', 'OAUTH_NOT_CONFIGURED');
+ }
 
+ const appAccessToken = `${FACEBOOK_APP_ID}|${process.env.FACEBOOK_APP_SECRET}`;
+
+ // Step 1: Validate token with debug_token
+ const debugUrl = `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(
+   accessToken
+ )}&access_token=${encodeURIComponent(appAccessToken)}`;
+
+ let debugRes;
+ try {
+   debugRes = await fetch(debugUrl);
+ } catch (networkError) {
+   throw new ApiError(503, 'Network error contacting Facebook Graph API', 'NETWORK_ERROR', { originalError: networkError.message });
+ }
+
+ if (!debugRes.ok) {
+   const errorText = await debugRes.text();
+   throw new ApiError(debugRes.status, `Facebook debug_token failed: ${errorText}`, 'FACEBOOK_API_ERROR');
+ }
+
+ const debugData = await debugRes.json();
+
+ if (
+   !debugData.data ||
+   !debugData.data.is_valid ||
+   debugData.data.app_id !== FACEBOOK_APP_ID
+ ) {
+   const errorMessage = debugData.error?.message || 'Invalid or expired token';
+   throw new ApiError(401, `Invalid Facebook token: ${errorMessage}`, 'INVALID_OAUTH_TOKEN');
+ }
+
+ // Step 2: Fetch user info
+ const userUrl = `https://graph.facebook.com/v21.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
+
+ let userRes;
+ try {
+   userRes = await fetch(userUrl);
+ } catch (networkError) {
+   throw new ApiError(503, 'Network error fetching Facebook user info', 'NETWORK_ERROR', { originalError: networkError.message });
+ }
+
+ if (!userRes.ok) {
+   const errorText = await userRes.text();
+   throw new ApiError(userRes.status, `Facebook user info failed: ${errorText}`, 'FACEBOOK_API_ERROR');
+ }
+
+ const userData = await userRes.json();
+
+ if (!userData.id) {
+   throw new ApiError(401, 'Invalid Facebook user data - missing ID', 'INVALID_OAUTH_TOKEN');
+ }
+
+ return {
+   sub: userData.id,
+   email: userData.email || null,
+   name: userData.name || null,
+   picture: userData.picture?.data?.url || null,
+ };
+};
 /**
  * Register a new user with email/password
  */
@@ -249,8 +290,15 @@ const oauthLogin = async ({ provider, idToken, accessToken, email, name, photoUr
     payload = await verifyAppleIdToken(idToken);
   } else if (provider === 'facebook') {
     const token = accessToken || idToken;
-    if (!token) throw new ApiError(400, 'Access token or ID token required for Facebook', 'VALIDATION_ERROR');
-    payload = await verifyFacebookAccessToken(token);
+    if (!token) { 
+      throw new ApiError(400, 'Access token required for Facebook', 'VALIDATION_ERROR');
+    }
+    try {
+      payload = await verifyFacebookAccessToken(token);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, 'Facebook verification failed unexpectedly', 'INTERNAL_SERVER_ERROR', { originalError: error.message });
+    }
   } else {
     throw new ApiError(400, 'Invalid provider', 'VALIDATION_ERROR');
   }

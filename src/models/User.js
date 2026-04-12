@@ -70,6 +70,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      photoData: {
+        type: DataTypes.BLOB,
+        allowNull: true,
+      },
+      photoMimeType: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
       role: {
         type: DataTypes.ENUM('student', 'teacher', 'admin'),
         allowNull: true, // Null until user selects role

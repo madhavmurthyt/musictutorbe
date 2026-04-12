@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { success, created } = require('../utils/response');
 const { uploadPhoto } = require('../config/upload');
+const { User } = require('../models');
 const {
   registerSchema,
   loginSchema,
@@ -98,8 +99,8 @@ router.patch('/profile', auth, validate(updateProfileSchema), async (req, res, n
 
 /**
  * POST /api/auth/upload-photo
- * Upload profile photo (multipart/form-data, field: photo). Returns { photoUrl }.
- * Client then PATCH /api/auth/profile with { photoUrl }.
+ * Upload profile photo (multipart/form-data, field: photo).
+ * Stores binary in DB and returns { photoUrl } pointing to the serve endpoint.
  */
 router.post('/upload-photo', auth, (req, res, next) => {
   uploadPhoto.single('photo')(req, res, (err) => {
@@ -116,9 +117,48 @@ router.post('/upload-photo', auth, (req, res, next) => {
         error: { code: 'MISSING_FILE', message: 'No photo file provided. Use field name: photo' },
       });
     }
+
+    await User.update(
+      {
+        photoData: req.file.buffer,
+        photoMimeType: req.file.mimetype,
+      },
+      { where: { id: req.userId } }
+    );
+
     const baseUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const photoUrl = `${baseUrl.replace(/\/$/, '')}/uploads/${req.file.filename}`;
+    const photoUrl = `${baseUrl.replace(/\/$/, '')}/api/auth/photo/${req.userId}`;
+
+    // Persist the photoUrl on the user record so toSafeObject() reflects it
+    await User.update({ photoUrl }, { where: { id: req.userId } });
+
     return success(res, 200, { photoUrl }, 'Photo uploaded');
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/auth/photo/:userId
+ * Serve a user's profile photo from the database.
+ * No auth required — URL is treated as publicly accessible (same as a hosted file URL).
+ */
+router.get('/photo/:userId', async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.params.userId, {
+      attributes: ['photoData', 'photoMimeType'],
+    });
+
+    if (!user || !user.photoData) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Photo not found' },
+      });
+    }
+
+    res.set('Content-Type', user.photoMimeType || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400'); // cache for 1 day
+    return res.send(user.photoData);
   } catch (error) {
     next(error);
   }

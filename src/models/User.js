@@ -38,8 +38,8 @@ module.exports = (sequelize, DataTypes) => {
 
     // Instance method to get safe user data (no password)
     toSafeObject() {
-      const { id, email, name, photoUrl, role, authProvider, createdAt } = this;
-      return { id, email, name, photoUrl, role, authProvider, createdAt };
+      const { id, email, name, photoUrl, role, authProvider, createdAt, updatedAt } = this;
+      return { id, email, name, photoUrl, role, authProvider, createdAt, updatedAt };
     }
   }
 

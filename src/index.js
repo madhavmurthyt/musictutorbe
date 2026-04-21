@@ -58,6 +58,10 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Legal pages (public HTML, no auth required)
+const legalRoutes = require('./routes/legal');
+app.use('/legal', legalRoutes);
+
 // API routes
 app.use('/api', routes);
 

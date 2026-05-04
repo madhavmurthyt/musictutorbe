@@ -164,4 +164,24 @@ router.get('/photo/:userId', async (req, res, next) => {
   }
 });
 
+/**
+ * DELETE /api/auth/account
+ * Permanently delete the authenticated user's account and all associated data.
+ */
+router.delete('/account', auth, async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'User not found' },
+      });
+    }
+    await user.destroy();
+    return success(res, 200, null, 'Account deleted');
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -49,10 +49,10 @@ app.use(express.urlencoded({ extended: true }));
 // ============================================
 
 // Health check
-app.get('/health', (req, res) => {
+app.get(['/', '/health'], (req, res) => {
   res.json({
     success: true,
-    message: 'Music Tutor API is running',
+    message: 'Naada Guru API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
   });

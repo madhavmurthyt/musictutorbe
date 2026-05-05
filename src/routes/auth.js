@@ -145,6 +145,14 @@ router.post('/upload-photo', auth, (req, res, next) => {
  */
 router.get('/photo/:userId', async (req, res, next) => {
   try {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(req.params.userId)) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Photo not found' },
+      });
+    }
+
     const user = await User.findByPk(req.params.userId, {
       attributes: ['photoData', 'photoMimeType'],
     });

@@ -305,6 +305,18 @@ const updateEnquiryStatus = async (enquiryId, tutorId, status) => {
     throw new ApiError(400, 'This enquiry has already been responded to', 'ALREADY_RESPONDED');
   }
 
+  // When accepting, require contact details so the student can reach the tutor
+  if (status === 'accepted') {
+    const tutorProfile = await TutorProfile.findOne({ where: { userId: tutorId } });
+    if (!tutorProfile?.preferredContactMode || !tutorProfile?.preferredContactValue) {
+      throw new ApiError(
+        400,
+        'Please add your contact email or phone number in your profile before accepting inquiries',
+        'CONTACT_REQUIRED'
+      );
+    }
+  }
+
   // Update status
   await enquiry.update({
     status,

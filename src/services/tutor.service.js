@@ -70,7 +70,7 @@ const listTutors = async (query) => {
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'name', 'photoUrl', 'email'],
+        attributes: ['id', 'name', 'photoUrl'],
         where: { role: 'teacher' },
       },
     ],
@@ -79,12 +79,10 @@ const listTutors = async (query) => {
     offset,
   });
 
-  // Transform data for API response (same shape as formatTutorProfileForApi + user fields)
   const tutors = rows.map((profile) => ({
     id: profile.userId,
     name: profile.user.name,
     photoUrl: profile.user.photoUrl,
-    email: profile.user.email,
     ...formatTutorProfileForApi(profile),
   }));
 
@@ -108,7 +106,7 @@ const getTutorById = async (tutorId) => {
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'name', 'photoUrl', 'email'],
+        attributes: ['id', 'name', 'photoUrl'],
         where: { role: 'teacher' },
       },
     ],
@@ -122,7 +120,6 @@ const getTutorById = async (tutorId) => {
     id: profile.userId,
     name: profile.user.name,
     photoUrl: profile.user.photoUrl,
-    email: profile.user.email,
     ...formatTutorProfileForApi(profile),
   };
 };
@@ -131,9 +128,9 @@ const getTutorById = async (tutorId) => {
  * Format a TutorProfile instance for API (nested location, same shape as list/detail).
  * Used by getTutorById and by auth getCurrentUser so teacher profile matches browse.
  */
-function formatTutorProfileForApi(profile) {
+function formatTutorProfileForApi(profile, { includeContact = false } = {}) {
   if (!profile) return null;
-  return {
+  const result = {
     instrument: profile.instrument,
     proficiencyLevel: profile.proficiencyLevel,
     location: {
@@ -147,11 +144,14 @@ function formatTutorProfileForApi(profile) {
     bio: profile.bio,
     availability: profile.availability || [],
     timeZoneAvailability: profile.timeZoneAvailability || [],
-    preferredContactMode: profile.preferredContactMode,
-    preferredContactValue: profile.preferredContactValue,
     isVerified: profile.isVerified,
     yearsOfExperience: profile.yearsOfExperience ?? 0,
   };
+  if (includeContact) {
+    result.preferredContactMode = profile.preferredContactMode;
+    result.preferredContactValue = profile.preferredContactValue;
+  }
+  return result;
 }
 
 /**

@@ -370,7 +370,7 @@ const getCurrentUser = async (userId) => {
   } else if (user.role === 'teacher') {
     const tutorProfile = await TutorProfile.findOne({ where: { userId: user.id } });
     if (tutorProfile) {
-      profile = formatTutorProfileForApi(tutorProfile);
+      profile = formatTutorProfileForApi(tutorProfile, { includeContact: true });
     }
   }
 

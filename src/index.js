@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
@@ -45,11 +46,41 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================
+// RATE LIMITING
+// ============================================
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMIT', message: 'Too many requests, please try again later' },
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMIT', message: 'Too many login attempts, please try again later' },
+  },
+});
+
+// ============================================
 // ROUTES
 // ============================================
 
-// Health check
-app.get(['/', '/health'], (req, res) => {
+// Landing page (public HTML — no rate limit)
+const landingRoutes = require('./routes/landing');
+app.use(landingRoutes);
+
+// Health check (API only)
+app.get('/health', (req, res) => {
   res.json({
     success: true,
     message: 'Naada Guru API is running',
@@ -62,8 +93,13 @@ app.get(['/', '/health'], (req, res) => {
 const legalRoutes = require('./routes/legal');
 app.use('/legal', legalRoutes);
 
-// API routes
-app.use('/api', routes);
+// Auth routes get stricter rate limiting
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/oauth', authLimiter);
+
+// All API routes get general rate limiting
+app.use('/api', apiLimiter, routes);
 
 // ============================================
 // ERROR HANDLING

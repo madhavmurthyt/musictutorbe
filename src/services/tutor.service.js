@@ -146,6 +146,7 @@ function formatTutorProfileForApi(profile, { includeContact = false } = {}) {
     timeZoneAvailability: profile.timeZoneAvailability || [],
     isVerified: profile.isVerified,
     yearsOfExperience: profile.yearsOfExperience ?? 0,
+    introVideoUrl: profile.introVideoUrl || null,
   };
   if (includeContact) {
     result.preferredContactMode = profile.preferredContactMode;
@@ -221,6 +222,7 @@ const createOrUpdateTutorProfile = async (userId, data) => {
     preferredContactMode: updatedProfile.preferredContactMode,
     preferredContactValue: updatedProfile.preferredContactValue,
     yearsOfExperience: updatedProfile.yearsOfExperience,
+    introVideoUrl: updatedProfile.introVideoUrl || null,
     onboardingComplete: updatedProfile.onboardingComplete,
   };
 };

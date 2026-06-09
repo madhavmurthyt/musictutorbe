@@ -1,6 +1,8 @@
 const { Op } = require('sequelize');
-const { User, TutorProfile, StudentProfile, Enquiry } = require('../models');
+const { User, TutorProfile, StudentProfile, Enquiry, Conversation } = require('../models');
 const ApiError = require('../utils/ApiError');
+const pushService = require('./push.service');
+const messageService = require('./message.service');
 
 // ============================================
 // ENQUIRY SERVICE
@@ -71,6 +73,13 @@ const createEnquiry = async (studentId, data) => {
   console.log(`   From: ${createdEnquiry.student.name}`);
   console.log(`   Message: ${message.substring(0, 50)}...`);
 
+  // Push notification to teacher (fire-and-forget)
+  pushService.sendPushNotification(tutorId, {
+    title: 'New Inquiry',
+    body: `${createdEnquiry.student.name} sent you an inquiry`,
+    data: { type: 'inquiry_received', enquiryId: enquiry.id },
+  });
+
   return {
     id: createdEnquiry.id,
     tutorId: createdEnquiry.tutorId,
@@ -113,6 +122,12 @@ const listStudentEnquiries = async (studentId, query) => {
           },
         ],
       },
+      {
+        model: Conversation,
+        as: 'conversation',
+        attributes: ['id'],
+        required: false,
+      },
     ],
     order: [[sortBy === 'status' ? 'status' : 'created_at', sortOrder.toUpperCase()]],
     limit: parseInt(limit),
@@ -142,6 +157,7 @@ const listStudentEnquiries = async (studentId, query) => {
         ? { city: tutorProfile.city, state: tutorProfile.state }
         : null,
       tutorContact,
+      conversationId: e.conversation?.id || null,
       message: e.message,
       studentLevel: e.studentLevel,
       preferredDays: e.preferredDays,
@@ -190,6 +206,12 @@ const listTeacherEnquiries = async (tutorId, query) => {
           },
         ],
       },
+      {
+        model: Conversation,
+        as: 'conversation',
+        attributes: ['id'],
+        required: false,
+      },
     ],
     order: [[sortBy === 'status' ? 'status' : 'created_at', sortOrder.toUpperCase()]],
     limit: parseInt(limit),
@@ -204,6 +226,7 @@ const listTeacherEnquiries = async (tutorId, query) => {
     studentPhotoUrl: e.student.photoUrl,
     studentProfileLevel: e.student.studentProfile?.level,
     studentLevel: e.studentLevel,
+    conversationId: e.conversation?.id || null,
     message: e.message,
     preferredDays: e.preferredDays,
     preferredTime: e.preferredTime,
@@ -323,15 +346,41 @@ const updateEnquiryStatus = async (enquiryId, tutorId, status) => {
     respondedAt: new Date(),
   });
 
+  let conversationId = null;
+  if (status === 'accepted') {
+    const conversation = await messageService.createConversationForEnquiry(
+      enquiry.id,
+      enquiry.studentId,
+      enquiry.tutorId
+    );
+    conversationId = conversation.id;
+  }
+
   // Mock email notification to student
   console.log(`📧 [Mock Email] Enquiry ${status} notification sent to ${enquiry.student.email}`);
   console.log(`   Tutor: ${enquiry.tutor.name}`);
   console.log(`   Status: ${status}`);
 
+  // Push notification to student (fire-and-forget)
+  if (status === 'accepted') {
+    pushService.sendPushNotification(enquiry.studentId, {
+      title: 'Inquiry Accepted',
+      body: `${enquiry.tutor.name} accepted your inquiry!`,
+      data: { type: 'inquiry_updated', enquiryId: enquiry.id },
+    });
+  } else if (status === 'declined') {
+    pushService.sendPushNotification(enquiry.studentId, {
+      title: 'Inquiry Update',
+      body: `${enquiry.tutor.name} responded to your inquiry`,
+      data: { type: 'inquiry_updated', enquiryId: enquiry.id },
+    });
+  }
+
   return {
     id: enquiry.id,
     status: enquiry.status,
     respondedAt: enquiry.respondedAt,
+    conversationId,
   };
 };
 
@@ -354,6 +403,19 @@ const getTeacherEnquiryStats = async (tutorId) => {
   };
 };
 
+const getBadgeCount = async (userId, role, since) => {
+  if (role === 'teacher') {
+    const count = await Enquiry.count({ where: { tutorId: userId, status: 'pending' } });
+    return { count };
+  }
+  const where = { studentId: userId, status: { [Op.in]: ['accepted', 'declined'] } };
+  if (since) {
+    where.updatedAt = { [Op.gt]: new Date(since) };
+  }
+  const count = await Enquiry.count({ where });
+  return { count };
+};
+
 module.exports = {
   createEnquiry,
   listStudentEnquiries,
@@ -361,4 +423,5 @@ module.exports = {
   getEnquiryById,
   updateEnquiryStatus,
   getTeacherEnquiryStats,
+  getBadgeCount,
 };

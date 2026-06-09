@@ -34,6 +34,36 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'tutorId',
         as: 'receivedEnquiries',
       });
+
+      User.hasMany(models.Conversation, {
+        foreignKey: 'studentId',
+        as: 'studentConversations',
+      });
+      User.hasMany(models.Conversation, {
+        foreignKey: 'tutorId',
+        as: 'tutorConversations',
+      });
+      User.hasMany(models.Message, {
+        foreignKey: 'senderId',
+        as: 'sentMessages',
+      });
+
+      User.hasMany(models.LessonSchedule, {
+        foreignKey: 'studentId',
+        as: 'studentSchedules',
+      });
+      User.hasMany(models.LessonSchedule, {
+        foreignKey: 'tutorId',
+        as: 'tutorSchedules',
+      });
+      User.hasMany(models.Lesson, {
+        foreignKey: 'studentId',
+        as: 'studentLessons',
+      });
+      User.hasMany(models.Lesson, {
+        foreignKey: 'tutorId',
+        as: 'tutorLessons',
+      });
     }
 
     // Instance method to get safe user data (no password)
@@ -90,6 +120,10 @@ module.exports = (sequelize, DataTypes) => {
       authProviderId: {
         type: DataTypes.STRING(255),
         allowNull: true, // External OAuth ID
+      },
+      pushToken: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
       },
     },
     {

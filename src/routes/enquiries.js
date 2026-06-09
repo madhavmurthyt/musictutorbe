@@ -80,6 +80,19 @@ router.get('/stats', auth, requireTeacher, async (req, res, next) => {
 });
 
 /**
+ * GET /api/enquiries/badge-count
+ * Badge count for tab — pending for teachers, responded-since for students
+ */
+router.get('/badge-count', auth, requireUser, async (req, res, next) => {
+  try {
+    const result = await enquiryService.getBadgeCount(req.userId, req.user.role, req.query.since);
+    return success(res, 200, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /api/enquiries/:id
  * Get a single enquiry by ID
  * Protected: Owner only (student or tutor of the enquiry)

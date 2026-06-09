@@ -37,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
         yearsOfExperience: this.yearsOfExperience,
         rating: parseFloat(this.rating) || 0,
         reviewCount: this.reviewCount,
+        introVideoUrl: this.introVideoUrl,
       };
     }
   }
@@ -84,6 +85,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       bio: {
         type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      introVideoUrl: {
+        type: DataTypes.STRING(500),
         allowNull: true,
       },
       availability: {

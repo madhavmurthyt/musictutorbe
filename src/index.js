@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const db = require('./models');
+const { startCronJobs } = require('./cron');
 
 // ============================================
 // APP INITIALIZATION
@@ -131,6 +132,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
+      startCronJobs();
     });
   } catch (error) {
     console.error('❌ Unable to start server:', error);

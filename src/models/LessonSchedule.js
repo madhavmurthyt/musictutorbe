@@ -2,43 +2,46 @@
 
 const { Model } = require('sequelize');
 
-// ============================================
-// ENQUIRY MODEL
-// ============================================
-
 module.exports = (sequelize, DataTypes) => {
-  class Enquiry extends Model {
+  class LessonSchedule extends Model {
     static associate(models) {
-      // Enquiry belongs to Student (User)
-      Enquiry.belongsTo(models.User, {
+      LessonSchedule.belongsTo(models.Enquiry, {
+        foreignKey: 'enquiryId',
+        as: 'enquiry',
+      });
+      LessonSchedule.belongsTo(models.User, {
         foreignKey: 'studentId',
         as: 'student',
       });
-
-      // Enquiry belongs to Tutor (User)
-      Enquiry.belongsTo(models.User, {
+      LessonSchedule.belongsTo(models.User, {
         foreignKey: 'tutorId',
         as: 'tutor',
       });
-
-      Enquiry.hasOne(models.Conversation, {
-        foreignKey: 'enquiryId',
-        as: 'conversation',
+      LessonSchedule.belongsTo(models.User, {
+        foreignKey: 'proposedBy',
+        as: 'proposer',
       });
-
-      Enquiry.hasMany(models.LessonSchedule, {
-        foreignKey: 'enquiryId',
-        as: 'lessonSchedules',
+      LessonSchedule.hasMany(models.Lesson, {
+        foreignKey: 'scheduleId',
+        as: 'lessons',
       });
     }
   }
 
-  Enquiry.init(
+  LessonSchedule.init(
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
+      },
+      enquiryId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'enquiries',
+          key: 'id',
+        },
       },
       studentId: {
         type: DataTypes.UUID,
@@ -56,29 +59,30 @@ module.exports = (sequelize, DataTypes) => {
           key: 'id',
         },
       },
-      message: {
-        type: DataTypes.TEXT,
+      dayOfWeek: {
+        type: DataTypes.ENUM('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'),
         allowNull: false,
       },
-      studentLevel: {
-        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'expert'),
+      startTime: {
+        type: DataTypes.STRING(5),
         allowNull: false,
       },
-      preferredDays: {
-        type: DataTypes.ARRAY(DataTypes.STRING),
+      durationMinutes: {
+        type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: [],
-        // Format: ['mon', 'wed', 'fri']
-      },
-      preferredTime: {
-        type: DataTypes.ENUM('morning', 'afternoon', 'evening', 'flexible'),
-        allowNull: false,
-        defaultValue: 'flexible',
       },
       status: {
-        type: DataTypes.ENUM('pending', 'accepted', 'declined'),
+        type: DataTypes.ENUM('proposed', 'active', 'paused', 'cancelled'),
         allowNull: false,
-        defaultValue: 'pending',
+        defaultValue: 'proposed',
+      },
+      proposedBy: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
       },
       respondedAt: {
         type: DataTypes.DATE,
@@ -87,20 +91,19 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: 'Enquiry',
-      tableName: 'enquiries',
+      modelName: 'LessonSchedule',
+      tableName: 'lesson_schedules',
       underscored: true,
       timestamps: true,
       indexes: [
         { fields: ['student_id'] },
         { fields: ['tutor_id'] },
-        { fields: ['status'] },
-        { fields: ['created_at'] },
+        { fields: ['enquiry_id'] },
         { fields: ['tutor_id', 'status'] },
         { fields: ['student_id', 'status'] },
       ],
     }
   );
 
-  return Enquiry;
+  return LessonSchedule;
 };

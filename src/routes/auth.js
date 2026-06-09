@@ -173,6 +173,26 @@ router.get('/photo/:userId', async (req, res, next) => {
 });
 
 /**
+ * PATCH /api/auth/push-token
+ * Save device push notification token
+ */
+router.patch('/push-token', auth, async (req, res, next) => {
+  try {
+    const { pushToken } = req.body;
+    if (!pushToken || typeof pushToken !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'pushToken is required' },
+      });
+    }
+    await User.update({ pushToken }, { where: { id: req.userId } });
+    return success(res, 200, null, 'Push token saved');
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * DELETE /api/auth/account
  * Permanently delete the authenticated user's account and all associated data.
  */

@@ -111,6 +111,23 @@ const tutorProfileObjectSchema = z.object({
     .max(2000, 'Bio must be less than 2000 characters')
     .trim()
     .optional(),
+  introVideoUrl: z
+    .string()
+    .url('Must be a valid URL')
+    .max(500, 'URL must be less than 500 characters')
+    .refine(
+      (url) => {
+        const lower = url.toLowerCase();
+        return (
+          lower.includes('youtube.com') ||
+          lower.includes('youtu.be') ||
+          lower.includes('instagram.com')
+        );
+      },
+      { message: 'Only YouTube and Instagram URLs are supported' }
+    )
+    .optional()
+    .nullable(),
   availability: z.array(availabilitySlotSchema).optional().default([]),
   timeZoneAvailability: z.array(timeZoneSlotSchema).optional().default([]),
   preferredContactMode: preferredContactModeEnum.optional().nullable(),

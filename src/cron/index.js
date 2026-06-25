@@ -6,8 +6,8 @@ const {
 } = require('./lessonCron');
 
 function startCronJobs() {
-  // Every 15 minutes: send lesson reminders
-  cron.schedule('*/15 * * * *', sendReminders);
+  // Every 30 minutes: send lesson reminders
+  cron.schedule('*/30 * * * *', sendReminders);
 
   // Every hour: auto-complete past lessons
   cron.schedule('0 * * * *', autoCompleteLessons);

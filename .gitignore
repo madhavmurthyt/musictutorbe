@@ -28,3 +28,6 @@ uploads/
 
 # Coverage
 coverage/
+
+# Database backups
+*.backup

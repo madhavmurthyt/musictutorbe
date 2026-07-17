@@ -27,7 +27,7 @@ APPLE_CLIENT_ID=...           # For verifying Apple SSO tokens
 FACEBOOK_APP_ID=...           # For verifying Facebook SSO tokens
 ```
 
-## Architecture
+## Architecture of the backend
 
 - **Framework**: Express.js with Helmet (security headers), CORS, Morgan (logging)
 - **ORM**: Sequelize with PostgreSQL. Models in `src/models/`, migrations in `migrations/`, seeders in `seeders/`

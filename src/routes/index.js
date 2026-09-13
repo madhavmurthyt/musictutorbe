@@ -5,6 +5,7 @@ const studentRoutes = require('./students');
 const enquiryRoutes = require('./enquiries');
 const messageRoutes = require('./messages');
 const lessonRoutes = require('./lessons');
+const practiceRoutes = require('./practice');
 
 // ============================================
 // API ROUTES AGGREGATOR
@@ -25,6 +26,7 @@ router.get('/', (req, res) => {
       enquiries: '/api/enquiries',
       messages: '/api/messages',
       lessons: '/api/lessons',
+      practice: '/api/practice',
     },
   });
 });
@@ -36,5 +38,6 @@ router.use('/students', studentRoutes);
 router.use('/enquiries', enquiryRoutes);
 router.use('/messages', messageRoutes);
 router.use('/lessons', lessonRoutes);
+router.use('/practice', practiceRoutes);
 
 module.exports = router;

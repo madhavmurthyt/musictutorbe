@@ -21,7 +21,7 @@ const listSchedulesQuerySchema = z.object({
 });
 
 const listLessonsQuerySchema = z.object({
-  upcoming: z.coerce.boolean().optional().default(true),
+  upcoming: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional().default(true),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(50).default(20),
 });

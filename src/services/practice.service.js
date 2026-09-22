@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { User, Enquiry, PracticeAssignment, PracticeCompletion } = require('../models');
+const { User, Enquiry, Lesson, PracticeAssignment, PracticeCompletion } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 function localDateStr(date = new Date()) {
@@ -190,19 +190,32 @@ const getCompletionHistory = async (studentId, { startDate, endDate } = {}) => {
   };
 };
 
+const checkEligibility = async (tutorId) => {
+  const count = await Lesson.count({
+    where: { tutorId, status: 'completed' },
+  });
+  return { eligible: count > 0 };
+};
+
 const getTeacherStudentOverview = async (tutorId) => {
-  const enquiries = await Enquiry.findAll({
-    where: { tutorId, status: 'accepted' },
+  const lessons = await Lesson.findAll({
+    where: { tutorId, status: 'completed' },
+    attributes: ['studentId'],
     include: [{ model: User, as: 'student', attributes: ['id', 'name', 'photoUrl'] }],
   });
+
+  const seen = new Set();
+  const uniqueStudents = [];
+  for (const lesson of lessons) {
+    if (!lesson.student || seen.has(lesson.studentId)) continue;
+    seen.add(lesson.studentId);
+    uniqueStudents.push(lesson.student);
+  }
 
   const today = localDateStr();
   const students = [];
 
-  for (const enq of enquiries) {
-    const student = enq.student;
-    if (!student) continue;
-
+  for (const student of uniqueStudents) {
     const activeAssignments = await PracticeAssignment.count({
       where: { tutorId, studentId: student.id, isActive: true },
     });
@@ -320,6 +333,7 @@ module.exports = {
   getStudentAssignments,
   toggleCompletion,
   getCompletionHistory,
+  checkEligibility,
   getTeacherStudentOverview,
   getTeacherStudentDetail,
   getPendingCount,

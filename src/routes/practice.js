@@ -62,6 +62,20 @@ router.delete(
 );
 
 router.get(
+  '/eligibility',
+  auth,
+  requireTeacher,
+  async (req, res, next) => {
+    try {
+      const result = await practiceService.checkEligibility(req.userId);
+      return success(res, 200, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
   '/students',
   auth,
   requireTeacher,
